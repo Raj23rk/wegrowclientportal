@@ -22,6 +22,12 @@ export class User {
 
   @Prop({ required: true })
   title: string;
+
+  @Prop({ default: '' })
+  phone: string;
+
+  @Prop({ default: true })
+  isActive: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -5,6 +5,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { PortalModule } from './portal/portal.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { PortalModule } from './portal/portal.module';
     SupabaseModule,
     AuthModule,
     ClientsModule,
-    PortalModule
+    PortalModule,
+    AdminModule
   ]
 })
 export class AppModule {}
