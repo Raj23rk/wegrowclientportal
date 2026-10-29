@@ -33,74 +33,45 @@ import {
   CreateNotificationDto
 } from './dto/admin.dto';
 
-const DEFAULT_ROADMAP_MONTHS = [
-  {
-    n: 1,
-    key: 'Month-01',
-    name: 'Month 1',
-    year: 2026,
-    theme: 'Foundation & Business Assessment',
-    objective: 'Understand the current business structure, key metrics, and operational bottlenecks.',
-    focus: ['Organisation structure', 'Process mapping', 'Role clarity', 'Baseline assessment'],
-    outcome: 'Comprehensive diagnostic report and 6-month priority transformation blueprint.',
-    notes: 'Kick-off assessment and stakeholder interviews.'
-  },
-  {
-    n: 2,
-    key: 'Month-02',
-    name: 'Month 2',
-    year: 2026,
-    theme: 'Process & SOP Optimisation',
-    objective: 'Standardise and streamline core business operations and delivery pipelines.',
-    focus: ['SOP documentation', 'Workflow automation', 'Quality checkpoints', 'Cycle time reduction'],
-    outcome: 'Approved standard operating procedures across all core departments.',
-    notes: 'SOP drafting and team review sessions.'
-  },
-  {
-    n: 3,
-    key: 'Month-03',
-    name: 'Month 3',
-    year: 2026,
-    theme: 'People & Accountability Framework',
-    objective: 'Align leadership, reporting hierarchies, and departmental accountability.',
-    focus: ['Role charters', 'KRA/KPI frameworks', 'Capability matrix', 'Performance governance'],
-    outcome: 'Clear performance scorecards for each department head and key employee.',
-    notes: 'Conduct 1-on-1 capability reviews.'
-  },
-  {
-    n: 4,
-    key: 'Month-04',
-    name: 'Month 4',
-    year: 2027,
-    theme: 'Technology & Tool Enablement',
-    objective: 'Deploy tech enablers and CRM/ERP integrations to automate workflows.',
-    focus: ['Digital tools audit', 'System integrations', 'Data visibility', 'Reporting dashboards'],
-    outcome: 'Real-time operating dashboard and automated management reporting.',
-    notes: 'Tool testing and training.'
-  },
-  {
-    n: 5,
-    key: 'Month-05',
-    name: 'Month 5',
-    year: 2027,
-    theme: 'Performance & Revenue Governance',
-    objective: 'Optimise sales funnels, profitability drivers, and cash flow governance.',
-    focus: ['Pricing strategies', 'Pipeline velocity', 'Cost rationalisation', 'Customer retention'],
-    outcome: 'Revenue acceleration framework and weekly governance cadences.',
-    notes: 'Financial model deep-dive.'
-  },
-  {
-    n: 6,
-    key: 'Month-06',
-    name: 'Month 6',
-    year: 2027,
-    theme: 'Scale, Autonomy & Final Review',
-    objective: 'Institutionalise practices so the company runs autonomously without consultant dependency.',
-    focus: ['Leadership succession', 'Continuous improvement loop', 'Audit checklist', 'Next-phase roadmap'],
-    outcome: 'Complete business transformation audit report and autonomous operational cadence.',
-    notes: 'Final board presentation and executive sign-off.'
-  }
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
+
+const MONTH_TEMPLATE: [string, string][] = [
+  ['Foundation & Business Assessment', 'Understand the current business structure and identify operational gaps.'],
+  ['Process Optimisation', 'Document and streamline the core operating processes.'],
+  ['People & Organisation', 'Align roles, responsibilities and capability with the redesigned processes.'],
+  ['Technology & Systems', 'Select and configure the systems that hold the new processes in place.'],
+  ['Performance & Growth', 'Install a KPI rhythm and open growth levers.'],
+  ['Review & Sustainability', 'Measure the transformation and hand over a self-running management system.']
+];
+
+function generateMonths(startIso: string) {
+  const [y, m, d] = (startIso || new Date().toISOString().split('T')[0]).split('-').map(Number);
+  const s = new Date(y, (m || 1) - 1, d || 1);
+  return MONTH_TEMPLATE.map((t, i) => {
+    const curDate = new Date(s.getFullYear(), s.getMonth() + i, 1);
+    const key = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
+    return {
+      n: i + 1,
+      key,
+      name: MONTH_NAMES[curDate.getMonth()],
+      year: curDate.getFullYear(),
+      theme: t[0],
+      objective: t[1],
+      focus: [],
+      outcome: '',
+      notes: ''
+    };
+  });
+}
+
+function fmtTime(t?: string): string {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
 
 const DEFAULT_DEPT_METRICS = [
   { k: 'People', prev: 50, v: 65 },
@@ -168,21 +139,31 @@ export class AdminService {
         .join('')
         .toUpperCase();
 
+    const start = dto.start || this.getTodayString();
+    const [sy, sm, sd] = start.split('-').map(Number);
+    const end =
+      dto.end ||
+      new Date(new Date(sy, (sm || 1) - 1, sd || 1).getTime() + 181 * 86400000)
+        .toISOString()
+        .split('T')[0];
+
+    const months = dto.months && dto.months.length > 0 ? dto.months : generateMonths(start);
+
     const client = new this.clientModel({
       clientId,
       company: dto.company,
       short,
-      color: dto.color || '#2563EB',
+      color: dto.color || '#C2410C',
       industry: dto.industry || 'Management & Consulting',
       size: dto.size || '50-100 employees',
-      city: dto.city || 'Bangalore',
+      city: dto.city || dto.location?.split(',')[0] || 'Bangalore',
       location: dto.location || `${dto.city || 'Bangalore'}, India`,
       contact: dto.contact,
       contactTitle: dto.contactTitle || 'Managing Director',
       email: dto.email.toLowerCase().trim(),
       phone: dto.phone || '',
-      start: dto.start || this.getTodayString(),
-      end: dto.end || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      start,
+      end,
       consultant: dto.consultant || 'Dr. Thavabalan',
       areas:
         dto.areas && dto.areas.length > 0
@@ -191,17 +172,19 @@ export class AdminService {
       people: dto.people || { ceo: `${dto.contact} (${dto.contactTitle || 'MD'})` },
       scoreHistory: [{ m: 'Baseline', v: 55 }],
       dept: DEFAULT_DEPT_METRICS,
-      months: dto.months && dto.months.length > 0 ? dto.months : DEFAULT_ROADMAP_MONTHS
+      logo: dto.logo || null,
+      status: dto.status || 'Active',
+      months
     });
 
     await client.save();
 
     // Create primary contact login account in User table
     let primaryUser: any = null;
+    const initialPassword = dto.password || dto.initialPassword || 'welcome123';
     try {
       const existingUser = await this.userModel.findOne({ email: dto.email.toLowerCase().trim() });
       if (!existingUser) {
-        const initialPassword = dto.initialPassword || 'welcome123';
         primaryUser = await this.userModel.create({
           email: dto.email.toLowerCase().trim(),
           passwordHash: initialPassword,
@@ -222,10 +205,10 @@ export class AdminService {
       clientId,
       notifId: 'N' + Date.now().toString().slice(-6),
       cat: 'Important',
-      text: `Welcome to WeGrow B School Portal! Your transformation portal is now active.`,
+      text: `Welcome to WeGrow B School Portal, ${dto.contact.split(' ')[0]}! Your 6-month transformation plan is active.`,
       date: this.getTodayString(),
       read: false,
-      link: '#/overview'
+      link: '#/action-plan'
     });
 
     return {
@@ -236,7 +219,7 @@ export class AdminService {
             email: primaryUser.email,
             name: primaryUser.name,
             title: primaryUser.title,
-            tempPassword: dto.initialPassword || 'welcome123'
+            tempPassword: initialPassword
           }
         : null
     };
@@ -473,6 +456,16 @@ export class AdminService {
     }
 
     const actionId = dto.actionId || 'ACT-' + Date.now().toString().slice(-6);
+    const progress = dto.status === 'Completed' ? 100 : (dto.progress ?? 0);
+    const comments = dto.note
+      ? [
+          {
+            by: client.consultant || 'Dr. Thavabalan',
+            date: this.getTodayString(),
+            text: dto.note
+          }
+        ]
+      : [];
 
     const task = await this.actionModel.create({
       clientId,
@@ -484,21 +477,22 @@ export class AdminService {
       owner: dto.owner,
       due: dto.due,
       status: dto.status || 'Not Started',
-      progress: dto.progress ?? 0,
-      comments: [],
+      progress,
+      comments,
       attachments: dto.attachments || []
     });
 
-    // Notify client portal of task assignment
-    await this.notificationModel.create({
-      clientId,
-      notifId: 'N' + Date.now().toString().slice(-6),
-      cat: 'Action Plan',
-      text: `New action assigned: "${dto.title}" (Due: ${dto.due}, Assigned to: ${dto.owner})`,
-      date: this.getTodayString(),
-      read: false,
-      link: '#/actions'
-    });
+    if (dto.notify !== false) {
+      await this.notificationModel.create({
+        clientId,
+        notifId: 'N' + Date.now().toString().slice(-6),
+        cat: 'Action Plan',
+        text: `New action assigned: "${dto.title}" (Due: ${dto.due}, Assigned to: ${dto.owner})`,
+        date: this.getTodayString(),
+        read: false,
+        link: '#/action-plan'
+      });
+    }
 
     return task;
   }
@@ -527,15 +521,36 @@ export class AdminService {
   }
 
   async updateTask(clientId: string, actionId: string, dto: UpdateTaskDto) {
-    const updated = await this.actionModel.findOneAndUpdate(
-      { clientId, actionId },
-      { $set: dto },
-      { new: true }
-    );
+    const updatePayload: any = { ...dto };
+    delete updatePayload.note;
+    delete updatePayload.notify;
 
-    if (!updated) {
+    if (dto.status === 'Completed') {
+      updatePayload.progress = 100;
+    }
+
+    const task = await this.actionModel.findOne({ clientId, actionId });
+    if (!task) {
       throw new NotFoundException(`Action item ${actionId} for client ${clientId} not found`);
     }
+
+    if (dto.note) {
+      const existingComments = task.comments || [];
+      updatePayload.comments = [
+        ...existingComments,
+        {
+          by: 'Dr. Thavabalan',
+          date: this.getTodayString(),
+          text: dto.note
+        }
+      ];
+    }
+
+    const updated = await this.actionModel.findOneAndUpdate(
+      { clientId, actionId },
+      { $set: updatePayload },
+      { new: true }
+    );
 
     // If marked completed, trigger congratulations notification
     if (dto.status === 'Completed') {
@@ -601,17 +616,34 @@ export class AdminService {
 
     const sessionId = dto.sessionId || 'S' + Date.now().toString().slice(-5);
 
+    let time = dto.time || '';
+    let duration = dto.duration || 90;
+    if (dto.start && dto.end) {
+      time = `${fmtTime(dto.start)} – ${fmtTime(dto.end)}`;
+      const [h1, m1] = dto.start.split(':').map(Number);
+      const [h2, m2] = dto.end.split(':').map(Number);
+      const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+      if (diff > 0) duration = diff;
+    } else if (!time) {
+      time = '10:00 AM – 11:30 AM';
+    }
+
     const session = await this.sessionModel.create({
       clientId,
       sessionId,
       title: dto.title,
       date: dto.date,
-      time: dto.time,
-      duration: dto.duration || 3,
+      time,
+      start: dto.start || '',
+      end: dto.end || '',
+      duration,
       mode: dto.mode || 'Online',
-      location: dto.location || (dto.mode === 'In person' ? `${client.city} Office` : 'Google Meet'),
+      location:
+        dto.location ||
+        (dto.mode === 'In person' ? `${client.city || client.company} Office` : 'Google Meet'),
       link: dto.link || (dto.mode === 'Online' ? 'https://meet.google.com/wegrow-consulting' : ''),
       consultant: dto.consultant || client.consultant || 'Dr. Thavabalan',
+      notes: dto.notes || '',
       agenda: dto.agenda || ['Strategy alignment', 'Operational review', 'Next sprint actions'],
       objectives: dto.objectives || ['Review monthly KPI progress', 'Address open blockers'],
       status: dto.status || 'Upcoming',
@@ -619,16 +651,17 @@ export class AdminService {
       attachments: dto.attachments || []
     });
 
-    // Notify client of scheduled session
-    await this.notificationModel.create({
-      clientId,
-      notifId: 'N' + Date.now().toString().slice(-6),
-      cat: 'Sessions',
-      text: `Consulting session booked: "${dto.title}" on ${dto.date} at ${dto.time}`,
-      date: this.getTodayString(),
-      read: false,
-      link: '#/sessions'
-    });
+    if (dto.notify !== false) {
+      await this.notificationModel.create({
+        clientId,
+        notifId: 'N' + Date.now().toString().slice(-6),
+        cat: 'Sessions',
+        text: `Consulting session booked: "${dto.title}" on ${dto.date} at ${time}`,
+        date: this.getTodayString(),
+        read: false,
+        link: '#/sessions'
+      });
+    }
 
     return session;
   }

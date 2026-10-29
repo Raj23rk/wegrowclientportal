@@ -19,6 +19,9 @@ export class SessionSummary {
 
   @Prop({ type: [String], default: [] })
   next: string[];
+
+  @Prop({ type: Object, default: null })
+  file?: any;
 }
 
 @Schema({ timestamps: true })
@@ -44,6 +47,12 @@ export class Session {
   @Prop({ required: true })
   time: string;
 
+  @Prop({ default: '' })
+  start?: string;
+
+  @Prop({ default: '' })
+  end?: string;
+
   @Prop({ required: true })
   location: string;
 
@@ -53,20 +62,23 @@ export class Session {
   @Prop({ required: true })
   consultant: string;
 
+  @Prop({ default: '' })
+  notes?: string;
+
   @Prop({ type: [String], default: [] })
   agenda: string[];
 
   @Prop({ type: [String], default: [] })
   objectives: string[];
 
-  @Prop({ required: true, enum: ['Completed', 'Upcoming'], default: 'Upcoming' })
+  @Prop({ required: true, enum: ['Completed', 'Upcoming', 'Cancelled'], default: 'Upcoming' })
   status: string;
 
   @Prop({ type: SessionSummary, default: null })
   summary: SessionSummary | null;
 
-  @Prop({ type: [String], default: [] })
-  attachments: string[];
+  @Prop({ type: Array, default: [] })
+  attachments: any[];
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);

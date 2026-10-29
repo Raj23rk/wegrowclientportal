@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsNumber,
   IsArray,
+  IsBoolean,
   Min,
   Max
 } from 'class-validator';
@@ -83,6 +84,17 @@ export class CreateClientDto {
   @IsArray()
   months?: any[];
 
+  @IsOptional()
+  logo?: any;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
   // Optional: create login user immediately for the primary contact
   @IsOptional()
   @IsString()
@@ -97,6 +109,13 @@ export class UpdateClientDto {
   @IsOptional()
   @IsString()
   short?: string;
+
+  @IsOptional()
+  logo?: any;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
 
   @IsOptional()
   @IsString()
@@ -268,7 +287,15 @@ export class CreateTaskDto {
 
   @IsOptional()
   @IsArray()
-  attachments?: string[];
+  attachments?: any[];
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  notify?: boolean;
 }
 
 export class UpdateTaskDto {
@@ -308,7 +335,15 @@ export class UpdateTaskDto {
 
   @IsOptional()
   @IsArray()
-  attachments?: string[];
+  attachments?: any[];
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  notify?: boolean;
 }
 
 // ---------------- SESSION / CALENDAR MEETING DTOs ----------------
@@ -329,9 +364,17 @@ export class CreateSessionDto {
   @IsNotEmpty()
   date: string; // YYYY-MM-DD
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  time: string; // e.g. "10:00 AM - 1:00 PM"
+  time?: string; // e.g. "10:00 AM - 1:00 PM"
+
+  @IsOptional()
+  @IsString()
+  start?: string;
+
+  @IsOptional()
+  @IsString()
+  end?: string;
 
   @IsOptional()
   @IsNumber()
@@ -354,6 +397,10 @@ export class CreateSessionDto {
   consultant?: string;
 
   @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
   @IsArray()
   agenda?: string[];
 
@@ -362,12 +409,16 @@ export class CreateSessionDto {
   objectives?: string[];
 
   @IsOptional()
-  @IsEnum(['Completed', 'Upcoming'])
-  status?: 'Completed' | 'Upcoming';
+  @IsEnum(['Completed', 'Upcoming', 'Cancelled'])
+  status?: 'Completed' | 'Upcoming' | 'Cancelled';
 
   @IsOptional()
   @IsArray()
-  attachments?: string[];
+  attachments?: any[];
+
+  @IsOptional()
+  @IsBoolean()
+  notify?: boolean;
 
   @IsOptional()
   summary?: {
@@ -376,6 +427,7 @@ export class CreateSessionDto {
     findings?: string[];
     decisions?: string[];
     next?: string[];
+    file?: any;
   };
 }
 
@@ -391,6 +443,14 @@ export class UpdateSessionDto {
   @IsOptional()
   @IsString()
   time?: string;
+
+  @IsOptional()
+  @IsString()
+  start?: string;
+
+  @IsOptional()
+  @IsString()
+  end?: string;
 
   @IsOptional()
   @IsNumber()
@@ -413,6 +473,10 @@ export class UpdateSessionDto {
   consultant?: string;
 
   @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
   @IsArray()
   agenda?: string[];
 
@@ -421,12 +485,16 @@ export class UpdateSessionDto {
   objectives?: string[];
 
   @IsOptional()
-  @IsEnum(['Completed', 'Upcoming'])
-  status?: 'Completed' | 'Upcoming';
+  @IsEnum(['Completed', 'Upcoming', 'Cancelled'])
+  status?: 'Completed' | 'Upcoming' | 'Cancelled';
 
   @IsOptional()
   @IsArray()
-  attachments?: string[];
+  attachments?: any[];
+
+  @IsOptional()
+  @IsBoolean()
+  notify?: boolean;
 
   @IsOptional()
   summary?: {

@@ -113,6 +113,12 @@ export class Client {
   @Prop({ type: [DeptMetric], default: [] })
   dept: DeptMetric[];
 
+  @Prop({ type: Object, default: null })
+  logo?: any;
+
+  @Prop({ default: 'Active' })
+  status: string;
+
   @Prop({ type: [MonthPlan], default: [] })
   months: MonthPlan[];
 }

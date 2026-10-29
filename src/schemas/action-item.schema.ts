@@ -54,8 +54,8 @@ export class ActionItem {
   @Prop({ type: [ActionComment], default: [] })
   comments: ActionComment[];
 
-  @Prop({ type: [String], default: [] })
-  attachments: string[];
+  @Prop({ type: Array, default: [] })
+  attachments: any[];
 }
 
 export const ActionItemSchema = SchemaFactory.createForClass(ActionItem);
