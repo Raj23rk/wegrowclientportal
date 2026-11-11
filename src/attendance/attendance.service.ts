@@ -1,0 +1,617 @@
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
+import { RegisterAttendeeDto, GateCheckInDto, UpdateFeedbackDto } from './dto/attendance.dto';
+
+// Default initial 15 TAG Group Attendees with WG-LDP-xxx series
+const DEFAULT_ATTENDEES = [
+  {
+    passCode: 'WG-LDP-001',
+    fullName: 'Krisshiya R.B',
+    phone: '9994010131',
+    email: 'krisshiya.rb@anamalais.in',
+    companyName: 'TAG Group',
+    designation: 'Operations Head',
+    department: 'Operations',
+    registeredAt: '2026-11-09 10:15 AM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:12 AM',
+    feedbackFilled: true,
+    feedbackRating: 5
+  },
+  {
+    passCode: 'WG-LDP-002',
+    fullName: 'Sujay Sarvesh R.B',
+    phone: '9994010132',
+    email: 'sujay.sarvesh@anamalais.in',
+    companyName: 'TAG Group',
+    designation: 'Strategic Planning Lead',
+    department: 'Operations',
+    registeredAt: '2026-11-09 10:20 AM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:18 AM',
+    feedbackFilled: true,
+    feedbackRating: 5
+  },
+  {
+    passCode: 'WG-LDP-003',
+    fullName: 'R. Soundararajan',
+    phone: '9842188231',
+    email: 'soundar.r@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Senior Plant Manager',
+    department: 'Manufacturing & Plant',
+    registeredAt: '2026-11-09 11:05 AM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:22 AM',
+    feedbackFilled: true,
+    feedbackRating: 4
+  },
+  {
+    passCode: 'WG-LDP-004',
+    fullName: 'M. Karthikeyan',
+    phone: '9789456123',
+    email: 'karthik.m@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Supply Chain Director',
+    department: 'Supply Chain & Logistics',
+    registeredAt: '2026-11-09 11:30 AM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:25 AM',
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-005',
+    fullName: 'P. Meenakshi Sundaram',
+    phone: '9843322110',
+    email: 'meenakshi.p@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Quality Assurance Head',
+    department: 'Manufacturing & Plant',
+    registeredAt: '2026-11-09 11:45 AM',
+    codeSentWhatsApp: true,
+    codeSentEmail: false,
+    isCheckedIn: true,
+    checkInTime: '09:28 AM',
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-006',
+    fullName: 'S. Anand Kumar',
+    phone: '9443155880',
+    email: 'anand.s@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Customer Experience Lead',
+    department: 'Sales & Customer Experience',
+    registeredAt: '2026-11-09 12:10 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: false,
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-007',
+    fullName: 'V. Divya Lakshmi',
+    phone: '9842511223',
+    email: 'divya.v@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Operations Manager',
+    department: 'HR & Administration',
+    registeredAt: '2026-11-09 12:40 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:15 AM',
+    feedbackFilled: true,
+    feedbackRating: 5
+  },
+  {
+    passCode: 'WG-LDP-008',
+    fullName: 'K. Rajesh Kannan',
+    phone: '9360123456',
+    email: 'rajesh.k@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Maintenance & Safety Head',
+    department: 'Manufacturing & Plant',
+    registeredAt: '2026-11-09 01:15 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: false,
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-009',
+    fullName: 'A. Balaji Swaminathan',
+    phone: '9840223344',
+    email: 'balaji.a@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Finance Controller',
+    department: 'Finance & Accounts',
+    registeredAt: '2026-11-09 02:00 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:30 AM',
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-010',
+    fullName: 'S. Priyadharshini',
+    phone: '9788112233',
+    email: 'priya.s@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Continuous Improvement Manager',
+    department: 'Operations',
+    registeredAt: '2026-11-09 02:30 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: false,
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-011',
+    fullName: 'N. Vigneshwaran',
+    phone: '9488334455',
+    email: 'vignesh.n@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Senior Production Supervisor',
+    department: 'Manufacturing & Plant',
+    registeredAt: '2026-11-09 03:00 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:20 AM',
+    feedbackFilled: true,
+    feedbackRating: 5
+  },
+  {
+    passCode: 'WG-LDP-012',
+    fullName: 'T. Subhashini',
+    phone: '9940556677',
+    email: 'subha.t@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'IT Systems & ERP Administrator',
+    department: 'Operations',
+    registeredAt: '2026-11-09 03:25 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: false,
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-013',
+    fullName: 'G. Murugan',
+    phone: '9841778899',
+    email: 'murugan.g@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Logistics Fleet Coordinator',
+    department: 'Supply Chain & Logistics',
+    registeredAt: '2026-11-09 04:10 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: false,
+    isCheckedIn: true,
+    checkInTime: '09:32 AM',
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-014',
+    fullName: 'K. Sangeetha',
+    phone: '9361223344',
+    email: 'sangeetha.k@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Talent Development Partner',
+    department: 'HR & Administration',
+    registeredAt: '2026-11-09 04:30 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: false,
+    feedbackFilled: false
+  },
+  {
+    passCode: 'WG-LDP-015',
+    fullName: 'D. Saravanan',
+    phone: '9843667788',
+    email: 'saravanan.d@taggroup.in',
+    companyName: 'TAG Group',
+    designation: 'Procurement Manager',
+    department: 'Supply Chain & Logistics',
+    registeredAt: '2026-11-09 05:00 PM',
+    codeSentWhatsApp: true,
+    codeSentEmail: true,
+    isCheckedIn: true,
+    checkInTime: '09:27 AM',
+    feedbackFilled: true,
+    feedbackRating: 5
+  }
+];
+
+@Injectable()
+export class AttendanceService {
+  constructor(
+    @InjectModel(Attendee.name)
+    private readonly attendeeModel: Model<AttendeeDocument>
+  ) {}
+
+  /**
+   * Automatically generate sequential passcode in format: WG-LDP-001, WG-LDP-002, etc.
+   */
+  async generateNextPassCode(): Promise<string> {
+    // Find all passcodes starting with WG-LDP-
+    const attendees = await this.attendeeModel.find({}, { passCode: 1 }).lean();
+
+    let maxNum = 0;
+    const regex = /^WG-LDP-(\d+)$/i;
+
+    for (const a of attendees) {
+      if (a.passCode) {
+        const match = a.passCode.match(regex);
+        if (match && match[1]) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+
+    // Also consider TAG26-xxx if any are in the db
+    if (maxNum === 0 && attendees.length > 0) {
+      maxNum = attendees.length;
+    }
+
+    const nextNum = maxNum + 1;
+    return `WG-LDP-${String(nextNum).padStart(3, '0')}`;
+  }
+
+  /**
+   * Helper to format current time like "09:30 AM"
+   */
+  private getFormattedTime(): string {
+    return new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
+  /**
+   * Helper to format registration date like "2026-11-11 04:30 PM"
+   */
+  private getFormattedRegDate(): string {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${this.getFormattedTime()}`;
+  }
+
+  /**
+   * Register a new employee/nominee from frontend form
+   */
+  async register(dto: RegisterAttendeeDto): Promise<AttendeeDocument> {
+    // Check if duplicate phone or email exists
+    const cleanPhone = dto.phone.trim();
+    if (cleanPhone) {
+      const existing = await this.attendeeModel.findOne({ phone: cleanPhone });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const passCode = await this.generateNextPassCode();
+
+    // Auto generate email if not provided
+    const email =
+      dto.email && dto.email.trim()
+        ? dto.email.trim().toLowerCase()
+        : `${dto.fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')}@taggroup.in`;
+
+    const newAttendee = new this.attendeeModel({
+      passCode,
+      fullName: dto.fullName.trim(),
+      phone: cleanPhone,
+      email,
+      companyName: dto.companyName?.trim() || 'TAG Group',
+      designation: dto.designation.trim(),
+      department: dto.department?.trim() || 'Operations',
+      experience: dto.experience?.trim() || '3 – 5 Years',
+      registeredAt: this.getFormattedRegDate(),
+      codeSentWhatsApp: true,
+      codeSentEmail: true,
+      isCheckedIn: false,
+      checkInTime: null,
+      feedbackFilled: false,
+      feedbackRating: null,
+      feedbackNotes: ''
+    });
+
+    return await newAttendee.save();
+  }
+
+  /**
+   * Ensure database has initial records if empty
+   */
+  async seedIfEmpty(): Promise<void> {
+    const count = await this.attendeeModel.countDocuments();
+    if (count === 0) {
+      await this.attendeeModel.insertMany(DEFAULT_ATTENDEES);
+    }
+  }
+
+  /**
+   * Force seed or reset attendees
+   */
+  async seedAttendees(): Promise<{ count: number; attendees: AttendeeDocument[] }> {
+    await this.attendeeModel.deleteMany({});
+    const inserted = await this.attendeeModel.insertMany(DEFAULT_ATTENDEES);
+    return { count: inserted.length, attendees: inserted as any };
+  }
+
+  /**
+   * Get all attendees with search, filters and metrics
+   */
+  async findAll(query?: {
+    search?: string;
+    department?: string;
+    status?: string;
+  }): Promise<{ attendees: any[]; stats: any }> {
+    // Seed default records if empty
+    await this.seedIfEmpty();
+
+    const filter: any = {};
+
+    if (query?.department && query.department !== 'ALL') {
+      filter.department = query.department;
+    }
+
+    if (query?.status && query.status !== 'ALL') {
+      if (query.status === 'CHECKED_IN') {
+        filter.isCheckedIn = true;
+      } else if (query.status === 'UNCHECKED') {
+        filter.isCheckedIn = false;
+      } else if (query.status === 'FEEDBACK') {
+        filter.feedbackFilled = true;
+      }
+    }
+
+    if (query?.search && query.search.trim()) {
+      const q = query.search.trim();
+      const regex = new RegExp(q, 'i');
+      filter.$or = [
+        { fullName: regex },
+        { phone: regex },
+        { passCode: regex },
+        { designation: regex },
+        { companyName: regex },
+        { email: regex }
+      ];
+    }
+
+    const allRecords = await this.attendeeModel.find({}).sort({ createdAt: -1 }).lean();
+    const stats = this.computeStats(allRecords);
+
+    // Apply filters to return attendees
+    const filteredRecords = await this.attendeeModel.find(filter).sort({ createdAt: -1 }).lean();
+
+    return {
+      attendees: filteredRecords.map((a) => ({
+        ...a,
+        id: (a as any)._id?.toString() || (a as any).id
+      })),
+      stats
+    };
+  }
+
+  /**
+   * Compute metrics / summary stats
+   */
+  private computeStats(records: any[]) {
+    const totalRegistered = records.length;
+    const checkedInCount = records.filter((a) => a.isCheckedIn).length;
+    const uncheckInCount = totalRegistered - checkedInCount;
+    const feedbackCount = records.filter((a) => a.feedbackFilled).length;
+    const passcodesSentCount = records.filter((a) => a.codeSentWhatsApp || a.codeSentEmail).length;
+    const checkInRate = totalRegistered > 0 ? Math.round((checkedInCount / totalRegistered) * 100) : 0;
+
+    return {
+      totalRegistered,
+      checkedInCount,
+      uncheckInCount,
+      feedbackCount,
+      passcodesSentCount,
+      checkInRate
+    };
+  }
+
+  /**
+   * Mark check-in for an attendee (called by "Mark Check-In" button click)
+   * This immediately sets isCheckedIn = true, records checkInTime, and increases checked in value!
+   */
+  async markCheckIn(id: string): Promise<{ success: boolean; attendee: any; stats: any }> {
+    let attendee: any = null;
+
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      attendee = await this.attendeeModel.findById(id);
+    }
+
+    if (!attendee) {
+      attendee = await this.attendeeModel.findOne({
+        $or: [{ passCode: id.toUpperCase() }, { phone: id }]
+      });
+    }
+
+    if (!attendee) {
+      throw new NotFoundException(`Attendee not found with id or passCode: ${id}`);
+    }
+
+    attendee.isCheckedIn = true;
+    attendee.checkInTime = this.getFormattedTime();
+    await attendee.save();
+
+    const allRecords = await this.attendeeModel.find({}).lean();
+    const stats = this.computeStats(allRecords);
+
+    return {
+      success: true,
+      attendee: {
+        ...attendee.toObject(),
+        id: attendee._id.toString()
+      },
+      stats
+    };
+  }
+
+  /**
+   * Toggle check-in status (allows marking check-in or undoing check-in)
+   */
+  async toggleCheckIn(id: string): Promise<{ success: boolean; attendee: any; stats: any }> {
+    let attendee: any = null;
+
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      attendee = await this.attendeeModel.findById(id);
+    }
+
+    if (!attendee) {
+      attendee = await this.attendeeModel.findOne({
+        $or: [{ passCode: id.toUpperCase() }, { phone: id }]
+      });
+    }
+
+    if (!attendee) {
+      throw new NotFoundException(`Attendee not found with id or passCode: ${id}`);
+    }
+
+    const nextState = !attendee.isCheckedIn;
+    attendee.isCheckedIn = nextState;
+    attendee.checkInTime = nextState ? this.getFormattedTime() : null;
+    await attendee.save();
+
+    const allRecords = await this.attendeeModel.find({}).lean();
+    const stats = this.computeStats(allRecords);
+
+    return {
+      success: true,
+      attendee: {
+        ...attendee.toObject(),
+        id: attendee._id.toString()
+      },
+      stats
+    };
+  }
+
+  /**
+   * Gate check-in verification by Passcode or Phone
+   */
+  async gateCheckIn(dto: GateCheckInDto): Promise<{ success: boolean; message: string; attendee?: any; stats?: any }> {
+    const cleanCode = dto.code.trim().toUpperCase();
+
+    const attendee: any = await this.attendeeModel.findOne({
+      $or: [
+        { passCode: cleanCode },
+        { phone: cleanCode },
+        { passCode: cleanCode.replace('-', '') },
+        { passCode: `WG-LDP-${cleanCode.replace(/[^0-9]/g, '').padStart(3, '0')}` }
+      ]
+    });
+
+    if (!attendee) {
+      return {
+        success: false,
+        message: `No attendee found matching "${cleanCode}". Please verify nominee details.`
+      };
+    }
+
+    if (attendee.isCheckedIn) {
+      const allRecords = await this.attendeeModel.find({}).lean();
+      return {
+        success: true,
+        message: `Already Checked-In at ${attendee.checkInTime || 'Gate'}!`,
+        attendee: { ...attendee.toObject(), id: attendee._id.toString() },
+        stats: this.computeStats(allRecords)
+      };
+    }
+
+    attendee.isCheckedIn = true;
+    attendee.checkInTime = this.getFormattedTime();
+    await attendee.save();
+
+    const allRecords = await this.attendeeModel.find({}).lean();
+    const stats = this.computeStats(allRecords);
+
+    return {
+      success: true,
+      message: `Verified! Welcome ${attendee.fullName} (${attendee.designation}) to Leadership in Action!`,
+      attendee: { ...attendee.toObject(), id: attendee._id.toString() },
+      stats
+    };
+  }
+
+  /**
+   * Toggle or update feedback status
+   */
+  async updateFeedback(id: string, dto?: UpdateFeedbackDto): Promise<{ success: boolean; attendee: any; stats: any }> {
+    const attendee = await this.attendeeModel.findById(id);
+    if (!attendee) {
+      throw new NotFoundException(`Attendee not found: ${id}`);
+    }
+
+    if (dto && typeof dto.feedbackFilled === 'boolean') {
+      attendee.feedbackFilled = dto.feedbackFilled;
+      attendee.feedbackRating = dto.feedbackRating ?? (dto.feedbackFilled ? 5 : null);
+      if (dto.feedbackNotes !== undefined) attendee.feedbackNotes = dto.feedbackNotes;
+    } else {
+      attendee.feedbackFilled = !attendee.feedbackFilled;
+      attendee.feedbackRating = attendee.feedbackFilled ? 5 : null;
+    }
+
+    await attendee.save();
+
+    const allRecords = await this.attendeeModel.find({}).lean();
+    return {
+      success: true,
+      attendee: { ...attendee.toObject(), id: attendee._id.toString() },
+      stats: this.computeStats(allRecords)
+    };
+  }
+
+  /**
+   * Update dispatch status (WhatsApp / Email)
+   */
+  async updateDispatch(id: string, channel: 'wa' | 'mail'): Promise<{ success: boolean; attendee: any }> {
+    const attendee = await this.attendeeModel.findById(id);
+    if (!attendee) {
+      throw new NotFoundException(`Attendee not found: ${id}`);
+    }
+
+    if (channel === 'wa') {
+      attendee.codeSentWhatsApp = true;
+    } else if (channel === 'mail') {
+      attendee.codeSentEmail = true;
+    }
+
+    await attendee.save();
+
+    return {
+      success: true,
+      attendee: { ...attendee.toObject(), id: attendee._id.toString() }
+    };
+  }
+
+  /**
+   * Quick summary stats
+   */
+  async getStats(): Promise<any> {
+    const allRecords = await this.attendeeModel.find({}).lean();
+    return this.computeStats(allRecords);
+  }
+}
+
