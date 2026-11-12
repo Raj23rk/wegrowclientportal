@@ -95,7 +95,53 @@ export class CreateClientDto {
   @IsString()
   status?: string;
 
-  // Optional: create login user immediately for the primary contact
+  @IsOptional()
+  id?: string;
+
+  @IsOptional()
+  @IsArray()
+  scoreHistory?: any[];
+
+  @IsOptional()
+  @IsArray()
+  dept?: any[];
+
+  @IsOptional()
+  @IsArray()
+  actions?: any[];
+
+  @IsOptional()
+  @IsArray()
+  sessions?: any[];
+
+  @IsOptional()
+  @IsArray()
+  reports?: any[];
+
+  @IsOptional()
+  @IsArray()
+  updates?: any[];
+
+  @IsOptional()
+  @IsArray()
+  events?: any[];
+
+  @IsOptional()
+  @IsArray()
+  photos?: any[];
+
+  @IsOptional()
+  @IsArray()
+  documents?: any[];
+
+  @IsOptional()
+  @IsArray()
+  notifications?: any[];
+
+  @IsOptional()
+  @IsArray()
+  feedback?: any[];
+
   @IsOptional()
   @IsString()
   initialPassword?: string;

@@ -170,8 +170,8 @@ export class AdminService {
           ? dto.areas
           : ['Operations', 'Process', 'People', 'Technology', 'Finance', 'Management'],
       people: dto.people || { ceo: `${dto.contact} (${dto.contactTitle || 'MD'})` },
-      scoreHistory: [{ m: 'Baseline', v: 55 }],
-      dept: DEFAULT_DEPT_METRICS,
+      scoreHistory: dto.scoreHistory && dto.scoreHistory.length > 0 ? dto.scoreHistory : [{ m: 'Baseline', v: 55 }],
+      dept: dto.dept && dto.dept.length > 0 ? dto.dept : DEFAULT_DEPT_METRICS,
       logo: dto.logo || null,
       status: dto.status || 'Active',
       months
@@ -205,7 +205,7 @@ export class AdminService {
       clientId,
       notifId: 'N' + Date.now().toString().slice(-6),
       cat: 'Important',
-      text: `Welcome to WeGrow B School Portal, ${dto.contact.split(' ')[0]}! Your 6-month transformation plan is active.`,
+      text: `Welcome to WeGrow B School Portal, ${dto.contact}! Your 6-month transformation plan is active.`,
       date: this.getTodayString(),
       read: false,
       link: '#/action-plan'

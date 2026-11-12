@@ -5,28 +5,28 @@ export type ClientDocument = Client & Document;
 
 @Schema({ _id: false })
 export class MonthPlan {
-  @Prop({ required: true })
+  @Prop({ default: 1 })
   n: number;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   key: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   name: string;
 
-  @Prop({ required: true })
+  @Prop({ default: 2026 })
   year: number;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   theme: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   objective: string;
 
   @Prop({ type: [String], default: [] })
   focus: string[];
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   outcome: string;
 
   @Prop({ default: '' })
