@@ -5,7 +5,7 @@ import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   // Increase payload size limits for image uploads (base64)
   app.use(json({ limit: '50mb' }));
