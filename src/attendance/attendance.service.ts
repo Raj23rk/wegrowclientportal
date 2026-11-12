@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { CacheService } from '../common/cache.service';
 import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
 import { RegisterAttendeeDto, GateCheckInDto, UpdateFeedbackDto } from './dto/attendance.dto';
 
@@ -8,7 +9,8 @@ import { RegisterAttendeeDto, GateCheckInDto, UpdateFeedbackDto } from './dto/at
 export class AttendanceService {
   constructor(
     @InjectModel(Attendee.name)
-    private readonly attendeeModel: Model<AttendeeDocument>
+    private readonly attendeeModel: Model<AttendeeDocument>,
+    private readonly cacheService: CacheService
   ) {}
 
   /**
@@ -104,7 +106,9 @@ export class AttendanceService {
       feedbackNotes: ''
     });
 
-    return await newAttendee.save();
+    const saved = await newAttendee.save();
+    this.cacheService.deletePattern('attendance:');
+    return saved;
   }
 
   /**
@@ -112,6 +116,7 @@ export class AttendanceService {
    */
   async clearAll(): Promise<{ count: number; message: string }> {
     const res = await this.attendeeModel.deleteMany({});
+    this.cacheService.deletePattern('attendance:');
     return { count: res.deletedCount || 0, message: 'All attendee records cleared successfully' };
   }
 
@@ -120,6 +125,7 @@ export class AttendanceService {
    */
   async deleteAttendee(id: string): Promise<{ success: boolean }> {
     await this.attendeeModel.findByIdAndDelete(id);
+    this.cacheService.deletePattern('attendance:');
     return { success: true };
   }
 
@@ -131,48 +137,51 @@ export class AttendanceService {
     department?: string;
     status?: string;
   }): Promise<{ attendees: any[]; stats: any }> {
-    const filter: any = {};
+    const cacheKey = `attendance:all:${query?.search || ''}:${query?.department || ''}:${query?.status || ''}`;
+    return this.cacheService.wrap(cacheKey, 15, async () => {
+      const filter: any = {};
 
-    if (query?.department && query.department !== 'ALL') {
-      filter.department = query.department;
-    }
-
-    if (query?.status && query.status !== 'ALL') {
-      if (query.status === 'CHECKED_IN') {
-        filter.isCheckedIn = true;
-      } else if (query.status === 'UNCHECKED') {
-        filter.isCheckedIn = false;
-      } else if (query.status === 'FEEDBACK') {
-        filter.feedbackFilled = true;
+      if (query?.department && query.department !== 'ALL') {
+        filter.department = query.department;
       }
-    }
 
-    if (query?.search && query.search.trim()) {
-      const q = query.search.trim();
-      const regex = new RegExp(q, 'i');
-      filter.$or = [
-        { fullName: regex },
-        { phone: regex },
-        { passCode: regex },
-        { designation: regex },
-        { companyName: regex },
-        { email: regex }
-      ];
-    }
+      if (query?.status && query.status !== 'ALL') {
+        if (query.status === 'CHECKED_IN') {
+          filter.isCheckedIn = true;
+        } else if (query.status === 'UNCHECKED') {
+          filter.isCheckedIn = false;
+        } else if (query.status === 'FEEDBACK') {
+          filter.feedbackFilled = true;
+        }
+      }
 
-    const allRecords = await this.attendeeModel.find({}).sort({ createdAt: -1 }).lean();
-    const stats = this.computeStats(allRecords);
+      if (query?.search && query.search.trim()) {
+        const q = query.search.trim();
+        const regex = new RegExp(q, 'i');
+        filter.$or = [
+          { fullName: regex },
+          { phone: regex },
+          { passCode: regex },
+          { designation: regex },
+          { companyName: regex },
+          { email: regex }
+        ];
+      }
 
-    // Apply filters to return attendees
-    const filteredRecords = await this.attendeeModel.find(filter).sort({ createdAt: -1 }).lean();
+      const allRecords = await this.attendeeModel.find({}).sort({ createdAt: -1 }).lean();
+      const stats = this.computeStats(allRecords);
 
-    return {
-      attendees: filteredRecords.map((a) => ({
-        ...a,
-        id: (a as any)._id?.toString() || (a as any).id
-      })),
-      stats
-    };
+      // Apply filters to return attendees
+      const filteredRecords = await this.attendeeModel.find(filter).sort({ createdAt: -1 }).lean();
+
+      return {
+        attendees: filteredRecords.map((a) => ({
+          ...a,
+          id: (a as any)._id?.toString() || (a as any).id
+        })),
+        stats
+      };
+    });
   }
 
   /**
@@ -220,6 +229,7 @@ export class AttendanceService {
     attendee.isCheckedIn = true;
     attendee.checkInTime = this.getFormattedTime();
     await attendee.save();
+    this.cacheService.deletePattern('attendance:');
 
     const allRecords = await this.attendeeModel.find({}).lean();
     const stats = this.computeStats(allRecords);
@@ -258,6 +268,7 @@ export class AttendanceService {
     attendee.isCheckedIn = nextState;
     attendee.checkInTime = nextState ? this.getFormattedTime() : null;
     await attendee.save();
+    this.cacheService.deletePattern('attendance:');
 
     const allRecords = await this.attendeeModel.find({}).lean();
     const stats = this.computeStats(allRecords);
@@ -307,6 +318,7 @@ export class AttendanceService {
     attendee.isCheckedIn = true;
     attendee.checkInTime = this.getFormattedTime();
     await attendee.save();
+    this.cacheService.deletePattern('attendance:');
 
     const allRecords = await this.attendeeModel.find({}).lean();
     const stats = this.computeStats(allRecords);
@@ -338,6 +350,7 @@ export class AttendanceService {
     }
 
     await attendee.save();
+    this.cacheService.deletePattern('attendance:');
 
     const allRecords = await this.attendeeModel.find({}).lean();
     return {
@@ -363,6 +376,7 @@ export class AttendanceService {
     }
 
     await attendee.save();
+    this.cacheService.deletePattern('attendance:');
 
     return {
       success: true,
@@ -374,8 +388,10 @@ export class AttendanceService {
    * Quick summary stats
    */
   async getStats(): Promise<any> {
-    const allRecords = await this.attendeeModel.find({}).lean();
-    return this.computeStats(allRecords);
+    return this.cacheService.wrap('attendance:stats', 15, async () => {
+      const allRecords = await this.attendeeModel.find({}).lean();
+      return this.computeStats(allRecords);
+    });
   }
 }
 

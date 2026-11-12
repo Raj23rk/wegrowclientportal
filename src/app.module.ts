@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { CommonModule } from './common/common.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
@@ -14,13 +15,17 @@ import { AttendanceModule } from './attendance/attendance.module';
       isGlobal: true,
       envFilePath: ['.env']
     }),
+    CommonModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         uri:
           configService.get<string>('MONGODB_URI') ||
           'mongodb://127.0.0.1:27017/wegrow_portal',
-        // In case local MongoDB is offline or bootstrapping, retry softly
+        maxPoolSize: 20,
+        minPoolSize: 5,
+        connectTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
         serverSelectionTimeoutMS: 5000
       }),
       inject: [ConfigService]

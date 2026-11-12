@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { CacheService } from '../common/cache.service';
 import { ActionItem, ActionItemDocument } from '../schemas/action-item.schema';
 import { BusinessUpdate, UpdateDocument } from '../schemas/update.schema';
 import { ClientEvent, EventDocument } from '../schemas/event.schema';
@@ -15,8 +16,16 @@ export class PortalService {
     @InjectModel(BusinessUpdate.name) private updateModel: Model<UpdateDocument>,
     @InjectModel(ClientEvent.name) private eventModel: Model<EventDocument>,
     @InjectModel(SessionFeedback.name) private feedbackModel: Model<FeedbackDocument>,
-    @InjectModel(NotificationItem.name) private notificationModel: Model<NotificationDocument>
+    @InjectModel(NotificationItem.name) private notificationModel: Model<NotificationDocument>,
+    private readonly cacheService: CacheService
   ) {}
+
+  private invalidateCache(clientId?: string) {
+    this.cacheService.delete('clients:all');
+    if (clientId) {
+      this.cacheService.delete(`clients:${clientId}`);
+    }
+  }
 
   async addActionComment(clientId: string, actionId: string, authorName: string, text: string) {
     const action = await this.actionModel.findOne({ clientId, actionId });
@@ -30,6 +39,7 @@ export class PortalService {
       text
     });
     await action.save();
+    this.invalidateCache(clientId);
     return action;
   }
 
@@ -51,10 +61,11 @@ export class PortalService {
       existing.comments = comments;
       existing.date = TODAY;
       await existing.save();
+      this.invalidateCache(clientId);
       return existing;
     }
 
-    return this.feedbackModel.create({
+    const created = await this.feedbackModel.create({
       clientId,
       session: sessionId,
       rating,
@@ -64,6 +75,8 @@ export class PortalService {
       comments,
       date: TODAY
     });
+    this.invalidateCache(clientId);
+    return created;
   }
 
   async publishUpdate(
@@ -95,19 +108,24 @@ export class PortalService {
       link: '#/updates'
     });
 
+    this.invalidateCache(clientId);
     return update;
   }
 
   async markNotificationRead(clientId: string, notifId: string) {
-    return this.notificationModel.findOneAndUpdate(
+    const res = await this.notificationModel.findOneAndUpdate(
       { clientId, notifId },
       { $set: { read: true } },
       { new: true }
     );
+    this.invalidateCache(clientId);
+    return res;
   }
 
   async markAllNotificationsRead(clientId: string) {
-    return this.notificationModel.updateMany({ clientId }, { $set: { read: true } });
+    const res = await this.notificationModel.updateMany({ clientId }, { $set: { read: true } });
+    this.invalidateCache(clientId);
+    return res;
   }
 
   async toggleEventRegistration(clientId: string, eventId: string): Promise<boolean> {
@@ -120,10 +138,12 @@ export class PortalService {
     if (isRegistered) {
       event.registeredClientIds = event.registeredClientIds.filter((id) => id !== clientId);
       await event.save();
+      this.invalidateCache(clientId);
       return false;
     } else {
       event.registeredClientIds.push(clientId);
       await event.save();
+      this.invalidateCache(clientId);
       return true;
     }
   }

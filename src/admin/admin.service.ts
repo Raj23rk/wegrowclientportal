@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { CacheService } from '../common/cache.service';
 import { Client, ClientDocument } from '../schemas/client.schema';
 import { User, UserDocument } from '../schemas/user.schema';
 import { ActionItem, ActionItemDocument } from '../schemas/action-item.schema';
@@ -96,8 +97,17 @@ export class AdminService {
     @InjectModel(BusinessUpdate.name) private updateModel: Model<UpdateDocument>,
     @InjectModel(NotificationItem.name) private notificationModel: Model<NotificationDocument>,
     @InjectModel(SessionFeedback.name) private feedbackModel: Model<FeedbackDocument>,
-    @InjectModel(ClientPhoto.name) private photoModel: Model<PhotoDocument>
+    @InjectModel(ClientPhoto.name) private photoModel: Model<PhotoDocument>,
+    private readonly cacheService: CacheService
   ) {}
+
+  public invalidateCache(clientId?: string) {
+    this.cacheService.delete('clients:all');
+    if (clientId) {
+      this.cacheService.delete(`clients:${clientId}`);
+    }
+    this.cacheService.deletePattern('admin:');
+  }
 
   private getTodayString(): string {
     return new Date().toISOString().split('T')[0];
@@ -211,6 +221,8 @@ export class AdminService {
       link: '#/action-plan'
     });
 
+    this.invalidateCache(clientId);
+
     return {
       success: true,
       client,
@@ -226,60 +238,63 @@ export class AdminService {
   }
 
   async findAllClients(search?: string): Promise<any[]> {
-    const query: any = {};
-    if (search) {
-      query.$or = [
-        { company: { $regex: search, $options: 'i' } },
-        { clientId: { $regex: search, $options: 'i' } },
-        { contact: { $regex: search, $options: 'i' } }
-      ];
-    }
+    const cacheKey = `admin:clients:${search || 'all'}`;
+    return this.cacheService.wrap(cacheKey, 30, async () => {
+      const query: any = {};
+      if (search) {
+        query.$or = [
+          { company: { $regex: search, $options: 'i' } },
+          { clientId: { $regex: search, $options: 'i' } },
+          { contact: { $regex: search, $options: 'i' } }
+        ];
+      }
 
-    const clients = await this.clientModel.find(query).sort({ createdAt: -1 }).lean();
+      const clients = await this.clientModel.find(query).sort({ createdAt: -1 }).lean();
 
-    // Enrich with summary stats for admin dashboard overview
-    const enriched = await Promise.all(
-      clients.map(async (cl) => {
-        const [tasksCount, completedTasksCount, membersCount, upcomingSession, docsCount] =
-          await Promise.all([
-            this.actionModel.countDocuments({ clientId: cl.clientId }),
-            this.actionModel.countDocuments({ clientId: cl.clientId, status: 'Completed' }),
-            this.userModel.countDocuments({ clientId: cl.clientId }),
-            this.sessionModel
-              .findOne({ clientId: cl.clientId, status: 'Upcoming' })
-              .sort({ date: 1 })
-              .lean(),
-            this.documentModel.countDocuments({ clientId: cl.clientId })
-          ]);
+      // Enrich with summary stats for admin dashboard overview
+      const enriched = await Promise.all(
+        clients.map(async (cl) => {
+          const [tasksCount, completedTasksCount, membersCount, upcomingSession, docsCount] =
+            await Promise.all([
+              this.actionModel.countDocuments({ clientId: cl.clientId }),
+              this.actionModel.countDocuments({ clientId: cl.clientId, status: 'Completed' }),
+              this.userModel.countDocuments({ clientId: cl.clientId }),
+              this.sessionModel
+                .findOne({ clientId: cl.clientId, status: 'Upcoming' })
+                .sort({ date: 1 })
+                .lean(),
+              this.documentModel.countDocuments({ clientId: cl.clientId })
+            ]);
 
-        const latestScore =
-          cl.scoreHistory && cl.scoreHistory.length > 0
-            ? cl.scoreHistory[cl.scoreHistory.length - 1].v
-            : 0;
+          const latestScore =
+            cl.scoreHistory && cl.scoreHistory.length > 0
+              ? cl.scoreHistory[cl.scoreHistory.length - 1].v
+              : 0;
 
-        return {
-          ...cl,
-          stats: {
-            tasksCount,
-            completedTasksCount,
-            pendingTasksCount: tasksCount - completedTasksCount,
-            membersCount,
-            documentsCount: docsCount,
-            latestScore,
-            upcomingSession: upcomingSession
-              ? {
-                  sessionId: upcomingSession.sessionId,
-                  title: upcomingSession.title,
-                  date: upcomingSession.date,
-                  time: upcomingSession.time
-                }
-              : null
-          }
-        };
-      })
-    );
+          return {
+            ...cl,
+            stats: {
+              tasksCount,
+              completedTasksCount,
+              pendingTasksCount: tasksCount - completedTasksCount,
+              membersCount,
+              documentsCount: docsCount,
+              latestScore,
+              upcomingSession: upcomingSession
+                ? {
+                    sessionId: upcomingSession.sessionId,
+                    title: upcomingSession.title,
+                    date: upcomingSession.date,
+                    time: upcomingSession.time
+                  }
+                : null
+            }
+          };
+        })
+      );
 
-    return enriched;
+      return enriched;
+    });
   }
 
   async findClientById(clientId: string): Promise<any> {
@@ -328,6 +343,7 @@ export class AdminService {
       throw new NotFoundException(`Client ${clientId} not found`);
     }
 
+    this.invalidateCache(clientId);
     return updated;
   }
 
@@ -351,6 +367,7 @@ export class AdminService {
       ]);
     }
 
+    this.invalidateCache(clientId);
     return { success: true, message: `Client ${clientId} and associated records deleted` };
   }
 
@@ -494,6 +511,7 @@ export class AdminService {
       });
     }
 
+    this.invalidateCache(clientId);
     return task;
   }
 
@@ -504,20 +522,23 @@ export class AdminService {
     owner?: string;
     search?: string;
   }) {
-    const query: any = {};
-    if (filters.clientId) query.clientId = filters.clientId;
-    if (filters.status) query.status = filters.status;
-    if (filters.priority) query.priority = filters.priority;
-    if (filters.owner) query.owner = { $regex: filters.owner, $options: 'i' };
-    if (filters.search) {
-      query.$or = [
-        { title: { $regex: filters.search, $options: 'i' } },
-        { desc: { $regex: filters.search, $options: 'i' } },
-        { owner: { $regex: filters.search, $options: 'i' } }
-      ];
-    }
+    const cacheKey = `admin:tasks:${JSON.stringify(filters || {})}`;
+    return this.cacheService.wrap(cacheKey, 30, async () => {
+      const query: any = {};
+      if (filters.clientId) query.clientId = filters.clientId;
+      if (filters.status) query.status = filters.status;
+      if (filters.priority) query.priority = filters.priority;
+      if (filters.owner) query.owner = { $regex: filters.owner, $options: 'i' };
+      if (filters.search) {
+        query.$or = [
+          { title: { $regex: filters.search, $options: 'i' } },
+          { desc: { $regex: filters.search, $options: 'i' } },
+          { owner: { $regex: filters.search, $options: 'i' } }
+        ];
+      }
 
-    return this.actionModel.find(query).sort({ due: 1 }).lean();
+      return this.actionModel.find(query).sort({ due: 1 }).lean();
+    });
   }
 
   async updateTask(clientId: string, actionId: string, dto: UpdateTaskDto) {
@@ -565,6 +586,7 @@ export class AdminService {
       });
     }
 
+    this.invalidateCache(clientId);
     return updated;
   }
 
@@ -593,6 +615,7 @@ export class AdminService {
       link: '#/actions'
     });
 
+    this.invalidateCache(clientId);
     return action;
   }
 
@@ -601,6 +624,7 @@ export class AdminService {
     if (!res) {
       throw new NotFoundException(`Action item ${actionId} not found`);
     }
+    this.invalidateCache(clientId);
     return { success: true, message: `Task ${actionId} deleted` };
   }
 
@@ -664,6 +688,7 @@ export class AdminService {
       });
     }
 
+    this.invalidateCache(clientId);
     return session;
   }
 
@@ -673,16 +698,19 @@ export class AdminService {
     fromDate?: string;
     toDate?: string;
   }) {
-    const query: any = {};
-    if (filters.clientId) query.clientId = filters.clientId;
-    if (filters.status) query.status = filters.status;
-    if (filters.fromDate || filters.toDate) {
-      query.date = {};
-      if (filters.fromDate) query.date.$gte = filters.fromDate;
-      if (filters.toDate) query.date.$lte = filters.toDate;
-    }
+    const cacheKey = `admin:sessions:${JSON.stringify(filters || {})}`;
+    return this.cacheService.wrap(cacheKey, 30, async () => {
+      const query: any = {};
+      if (filters.clientId) query.clientId = filters.clientId;
+      if (filters.status) query.status = filters.status;
+      if (filters.fromDate || filters.toDate) {
+        query.date = {};
+        if (filters.fromDate) query.date.$gte = filters.fromDate;
+        if (filters.toDate) query.date.$lte = filters.toDate;
+      }
 
-    return this.sessionModel.find(query).sort({ date: 1 }).lean();
+      return this.sessionModel.find(query).sort({ date: 1 }).lean();
+    });
   }
 
   async updateSession(clientId: string, sessionId: string, dto: UpdateSessionDto) {
@@ -711,6 +739,7 @@ export class AdminService {
       });
     }
 
+    this.invalidateCache(clientId);
     return updated;
   }
 
@@ -719,13 +748,14 @@ export class AdminService {
     if (!res) {
       throw new NotFoundException(`Session ${sessionId} not found`);
     }
+    this.invalidateCache(clientId);
     return { success: true, message: `Session ${sessionId} cancelled` };
   }
 
   // Workshop & Networking Events
   async createEvent(dto: CreateEventDto) {
     const eventId = dto.eventId || 'EV' + Date.now().toString().slice(-5);
-    return this.eventModel.create({
+    const event = await this.eventModel.create({
       eventId,
       title: dto.title,
       type: dto.type,
@@ -740,10 +770,14 @@ export class AdminService {
       hue: dto.hue || 220,
       registeredClientIds: []
     });
+    this.invalidateCache();
+    return event;
   }
 
   async findAllEvents() {
-    return this.eventModel.find().sort({ date: 1 }).lean();
+    return this.cacheService.wrap('admin:events:all', 30, async () => {
+      return this.eventModel.find().sort({ date: 1 }).lean();
+    });
   }
 
   async updateEvent(eventId: string, dto: Partial<CreateEventDto>) {
@@ -755,6 +789,7 @@ export class AdminService {
     if (!updated) {
       throw new NotFoundException(`Event ${eventId} not found`);
     }
+    this.invalidateCache();
     return updated;
   }
 
@@ -763,6 +798,7 @@ export class AdminService {
     if (!res) {
       throw new NotFoundException(`Event ${eventId} not found`);
     }
+    this.invalidateCache();
     return { success: true, message: `Event ${eventId} removed` };
   }
 
@@ -795,6 +831,7 @@ export class AdminService {
       link: '#/documents'
     });
 
+    this.invalidateCache(clientId);
     return doc;
   }
 
@@ -807,6 +844,7 @@ export class AdminService {
     if (!res) {
       throw new NotFoundException(`Document ${docId} not found`);
     }
+    this.invalidateCache(clientId);
     return { success: true, message: `Document ${docId} deleted` };
   }
 
@@ -834,6 +872,7 @@ export class AdminService {
       link: '#/reports'
     });
 
+    this.invalidateCache(clientId);
     return report;
   }
 
@@ -846,6 +885,7 @@ export class AdminService {
     if (!res) {
       throw new NotFoundException(`Report ${reportId} not found`);
     }
+    this.invalidateCache(clientId);
     return { success: true, message: `Report ${reportId} deleted` };
   }
 
@@ -872,6 +912,7 @@ export class AdminService {
       link: '#/updates'
     });
 
+    this.invalidateCache(clientId);
     return update;
   }
 
@@ -880,13 +921,14 @@ export class AdminService {
     if (!res) {
       throw new NotFoundException(`Update ${updateId} not found`);
     }
+    this.invalidateCache(clientId);
     return { success: true, message: `Update ${updateId} deleted` };
   }
 
   // Direct Notifications Dispatch
   async sendNotification(clientId: string, dto: CreateNotificationDto) {
     const notifId = 'N' + Date.now().toString().slice(-6);
-    return this.notificationModel.create({
+    const notif = await this.notificationModel.create({
       clientId,
       notifId,
       cat: dto.cat || 'Important',
@@ -895,6 +937,8 @@ export class AdminService {
       read: false,
       link: dto.link || '#/overview'
     });
+    this.invalidateCache(clientId);
+    return notif;
   }
 
   // ==========================================
@@ -902,48 +946,50 @@ export class AdminService {
   // ==========================================
 
   async getDashboardOverview() {
-    const today = this.getTodayString();
-    const in14Days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    return this.cacheService.wrap('admin:dashboard', 30, async () => {
+      const today = this.getTodayString();
+      const in14Days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    const [
-      clientsCount,
-      membersCount,
-      totalTasks,
-      completedTasks,
-      pendingTasks,
-      upcomingSessions,
-      eventsCount,
-      recentUpdates,
-      recentFeedback
-    ] = await Promise.all([
-      this.clientModel.countDocuments(),
-      this.userModel.countDocuments({ role: 'client' }),
-      this.actionModel.countDocuments(),
-      this.actionModel.countDocuments({ status: 'Completed' }),
-      this.actionModel.countDocuments({ status: { $ne: 'Completed' } }),
-      this.sessionModel
-        .find({ date: { $gte: today, $lte: in14Days } })
-        .sort({ date: 1 })
-        .lean(),
-      this.eventModel.countDocuments(),
-      this.updateModel.find().sort({ createdAt: -1 }).limit(5).lean(),
-      this.feedbackModel.find().sort({ createdAt: -1 }).limit(5).lean()
-    ]);
-
-    return {
-      overview: {
-        totalClients: clientsCount,
-        totalCompanyMembers: membersCount,
+      const [
+        clientsCount,
+        membersCount,
         totalTasks,
         completedTasks,
         pendingTasks,
-        taskCompletionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-        upcomingSessionsCount: upcomingSessions.length,
-        eventsCount
-      },
-      upcomingSessions,
-      recentUpdates,
-      recentFeedback
-    };
+        upcomingSessions,
+        eventsCount,
+        recentUpdates,
+        recentFeedback
+      ] = await Promise.all([
+        this.clientModel.countDocuments(),
+        this.userModel.countDocuments({ role: 'client' }),
+        this.actionModel.countDocuments(),
+        this.actionModel.countDocuments({ status: 'Completed' }),
+        this.actionModel.countDocuments({ status: { $ne: 'Completed' } }),
+        this.sessionModel
+          .find({ status: 'Upcoming' })
+          .sort({ date: 1 })
+          .lean(),
+        this.eventModel.countDocuments(),
+        this.updateModel.find().sort({ createdAt: -1 }).limit(5).lean(),
+        this.feedbackModel.find().sort({ createdAt: -1 }).limit(5).lean()
+      ]);
+
+      return {
+        overview: {
+          totalClients: clientsCount,
+          totalCompanyMembers: membersCount,
+          totalTasks,
+          completedTasks,
+          pendingTasks,
+          taskCompletionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+          upcomingSessionsCount: upcomingSessions.length,
+          eventsCount
+        },
+        upcomingSessions,
+        recentUpdates,
+        recentFeedback
+      };
+    });
   }
 }
