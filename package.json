@@ -8,11 +8,11 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\"",
-    "start": "node dist/main",
+    "start": "node --max-old-space-size=400 dist/main",
     "dev": "nest start --watch",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node --max-old-space-size=400 dist/main",
     "seed": "ts-node src/seed.ts"
   },
   "dependencies": {

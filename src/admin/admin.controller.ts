@@ -9,7 +9,10 @@ import {
   Query,
   UseGuards,
   Request,
-  BadRequestException
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Logger
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -33,6 +36,8 @@ import {
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+
   constructor(private readonly adminService: AdminService) {}
 
   // ==========================================
@@ -48,7 +53,19 @@ export class AdminController {
   // ==========================================
   @Post('clients')
   async createClient(@Body() dto: CreateClientDto) {
-    return this.adminService.createClient(dto);
+    try {
+      return await this.adminService.createClient(dto);
+    } catch (err: any) {
+      this.logger.error(`Failed to create client: ${err?.message}`, err?.stack);
+      throw new HttpException(
+        {
+          statusCode: err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          message: err.message || 'Client creation failed',
+          error: err.name || 'Error'
+        },
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get('clients')
