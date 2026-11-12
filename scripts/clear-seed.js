@@ -63,3 +63,4 @@ clearSeedData().catch((err) => {
   console.error('Error clearing seed data:', err);
   process.exit(1);
 });
+
