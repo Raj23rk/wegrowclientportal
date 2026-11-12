@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
+import { Client, ClientDocument } from '../schemas/client.schema';
 
 export const DEMO_USERS = [
   {
@@ -19,6 +20,7 @@ export const DEMO_USERS = [
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Client.name) private clientModel: Model<ClientDocument>,
     private jwtService: JwtService
   ) {}
 
@@ -31,9 +33,22 @@ export class AuthService {
         $or: [{ email: cleanId }, { clientId: cleanId.toUpperCase() }]
       });
       if (user && user.passwordHash === pass) {
+        let resolvedClientId = user.clientId;
+        if (user.role === 'client' && !resolvedClientId) {
+          const clientDoc = await this.clientModel.findOne({
+            email: user.email.toLowerCase().trim()
+          });
+          if (clientDoc) {
+            resolvedClientId = clientDoc.clientId;
+            await this.userModel.updateOne(
+              { _id: user._id },
+              { $set: { clientId: resolvedClientId } }
+            );
+          }
+        }
         return {
           email: user.email,
-          clientId: user.clientId,
+          clientId: resolvedClientId,
           role: user.role,
           name: user.name,
           title: user.title

@@ -205,6 +205,17 @@ export class AdminService {
           phone: dto.phone || '',
           isActive: true
         });
+      } else {
+        existingUser.clientId = clientId;
+        existingUser.role = 'client';
+        existingUser.name = dto.contact || existingUser.name;
+        existingUser.title = dto.contactTitle || existingUser.title || 'Managing Director';
+        existingUser.phone = dto.phone || existingUser.phone || '';
+        existingUser.isActive = true;
+        if (dto.password || dto.initialPassword) {
+          existingUser.passwordHash = initialPassword;
+        }
+        primaryUser = await existingUser.save();
       }
     } catch (err) {
       this.logger.warn(`Could not auto-create primary user for ${dto.email}: ${err.message}`);
