@@ -79,6 +79,9 @@ export class Session {
 
   @Prop({ type: Array, default: [] })
   attachments: any[];
+
+  @Prop({ default: null })
+  image?: string;
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);

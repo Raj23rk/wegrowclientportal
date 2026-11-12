@@ -62,43 +62,43 @@ export class Client {
   @Prop({ required: true })
   company: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   short: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '#C2410C' })
   color: string;
 
-  @Prop({ required: true })
+  @Prop({ default: 'Management & Consulting' })
   industry: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '50-100 employees' })
   size: string;
 
-  @Prop({ required: true })
+  @Prop({ default: 'Bangalore' })
   city: string;
 
-  @Prop({ required: true })
+  @Prop({ default: 'Bangalore, India' })
   location: string;
 
   @Prop({ required: true })
   contact: string;
 
-  @Prop({ required: true })
+  @Prop({ default: 'Managing Director' })
   contactTitle: string;
 
   @Prop({ required: true })
   email: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   phone: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   start: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   end: string;
 
-  @Prop({ required: true })
+  @Prop({ default: 'Dr. Thavabalan' })
   consultant: string;
 
   @Prop({ type: [String], default: [] })

@@ -417,6 +417,10 @@ export class CreateSessionDto {
   attachments?: any[];
 
   @IsOptional()
+  @IsString()
+  image?: string;
+
+  @IsOptional()
   @IsBoolean()
   notify?: boolean;
 
@@ -491,6 +495,10 @@ export class UpdateSessionDto {
   @IsOptional()
   @IsArray()
   attachments?: any[];
+
+  @IsOptional()
+  @IsString()
+  image?: string;
 
   @IsOptional()
   @IsBoolean()

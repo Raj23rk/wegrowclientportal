@@ -648,7 +648,8 @@ export class AdminService {
       objectives: dto.objectives || ['Review monthly KPI progress', 'Address open blockers'],
       status: dto.status || 'Upcoming',
       summary: dto.summary || null,
-      attachments: dto.attachments || []
+      attachments: dto.attachments || [],
+      image: dto.image || null
     });
 
     if (dto.notify !== false) {
