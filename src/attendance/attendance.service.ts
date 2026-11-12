@@ -4,236 +4,6 @@ import { Model } from 'mongoose';
 import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
 import { RegisterAttendeeDto, GateCheckInDto, UpdateFeedbackDto } from './dto/attendance.dto';
 
-// Default initial 15 TAG Group Attendees with WG-LDP-xxx series
-const DEFAULT_ATTENDEES = [
-  {
-    passCode: 'WG-LDP-001',
-    fullName: 'Krisshiya R.B',
-    phone: '9994010131',
-    email: 'krisshiya.rb@anamalais.in',
-    companyName: 'TAG Group',
-    designation: 'Operations Head',
-    department: 'Operations',
-    registeredAt: '2026-11-09 10:15 AM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:12 AM',
-    feedbackFilled: true,
-    feedbackRating: 5
-  },
-  {
-    passCode: 'WG-LDP-002',
-    fullName: 'Sujay Sarvesh R.B',
-    phone: '9994010132',
-    email: 'sujay.sarvesh@anamalais.in',
-    companyName: 'TAG Group',
-    designation: 'Strategic Planning Lead',
-    department: 'Operations',
-    registeredAt: '2026-11-09 10:20 AM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:18 AM',
-    feedbackFilled: true,
-    feedbackRating: 5
-  },
-  {
-    passCode: 'WG-LDP-003',
-    fullName: 'R. Soundararajan',
-    phone: '9842188231',
-    email: 'soundar.r@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Senior Plant Manager',
-    department: 'Manufacturing & Plant',
-    registeredAt: '2026-11-09 11:05 AM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:22 AM',
-    feedbackFilled: true,
-    feedbackRating: 4
-  },
-  {
-    passCode: 'WG-LDP-004',
-    fullName: 'M. Karthikeyan',
-    phone: '9789456123',
-    email: 'karthik.m@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Supply Chain Director',
-    department: 'Supply Chain & Logistics',
-    registeredAt: '2026-11-09 11:30 AM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:25 AM',
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-005',
-    fullName: 'P. Meenakshi Sundaram',
-    phone: '9843322110',
-    email: 'meenakshi.p@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Quality Assurance Head',
-    department: 'Manufacturing & Plant',
-    registeredAt: '2026-11-09 11:45 AM',
-    codeSentWhatsApp: true,
-    codeSentEmail: false,
-    isCheckedIn: true,
-    checkInTime: '09:28 AM',
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-006',
-    fullName: 'S. Anand Kumar',
-    phone: '9443155880',
-    email: 'anand.s@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Customer Experience Lead',
-    department: 'Sales & Customer Experience',
-    registeredAt: '2026-11-09 12:10 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: false,
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-007',
-    fullName: 'V. Divya Lakshmi',
-    phone: '9842511223',
-    email: 'divya.v@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Operations Manager',
-    department: 'HR & Administration',
-    registeredAt: '2026-11-09 12:40 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:15 AM',
-    feedbackFilled: true,
-    feedbackRating: 5
-  },
-  {
-    passCode: 'WG-LDP-008',
-    fullName: 'K. Rajesh Kannan',
-    phone: '9360123456',
-    email: 'rajesh.k@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Maintenance & Safety Head',
-    department: 'Manufacturing & Plant',
-    registeredAt: '2026-11-09 01:15 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: false,
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-009',
-    fullName: 'A. Balaji Swaminathan',
-    phone: '9840223344',
-    email: 'balaji.a@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Finance Controller',
-    department: 'Finance & Accounts',
-    registeredAt: '2026-11-09 02:00 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:30 AM',
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-010',
-    fullName: 'S. Priyadharshini',
-    phone: '9788112233',
-    email: 'priya.s@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Continuous Improvement Manager',
-    department: 'Operations',
-    registeredAt: '2026-11-09 02:30 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: false,
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-011',
-    fullName: 'N. Vigneshwaran',
-    phone: '9488334455',
-    email: 'vignesh.n@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Senior Production Supervisor',
-    department: 'Manufacturing & Plant',
-    registeredAt: '2026-11-09 03:00 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:20 AM',
-    feedbackFilled: true,
-    feedbackRating: 5
-  },
-  {
-    passCode: 'WG-LDP-012',
-    fullName: 'T. Subhashini',
-    phone: '9940556677',
-    email: 'subha.t@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'IT Systems & ERP Administrator',
-    department: 'Operations',
-    registeredAt: '2026-11-09 03:25 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: false,
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-013',
-    fullName: 'G. Murugan',
-    phone: '9841778899',
-    email: 'murugan.g@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Logistics Fleet Coordinator',
-    department: 'Supply Chain & Logistics',
-    registeredAt: '2026-11-09 04:10 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: false,
-    isCheckedIn: true,
-    checkInTime: '09:32 AM',
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-014',
-    fullName: 'K. Sangeetha',
-    phone: '9361223344',
-    email: 'sangeetha.k@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Talent Development Partner',
-    department: 'HR & Administration',
-    registeredAt: '2026-11-09 04:30 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: false,
-    feedbackFilled: false
-  },
-  {
-    passCode: 'WG-LDP-015',
-    fullName: 'D. Saravanan',
-    phone: '9843667788',
-    email: 'saravanan.d@taggroup.in',
-    companyName: 'TAG Group',
-    designation: 'Procurement Manager',
-    department: 'Supply Chain & Logistics',
-    registeredAt: '2026-11-09 05:00 PM',
-    codeSentWhatsApp: true,
-    codeSentEmail: true,
-    isCheckedIn: true,
-    checkInTime: '09:27 AM',
-    feedbackFilled: true,
-    feedbackRating: 5
-  }
-];
-
 @Injectable()
 export class AttendanceService {
   constructor(
@@ -338,22 +108,19 @@ export class AttendanceService {
   }
 
   /**
-   * Ensure database has initial records if empty
+   * Delete all attendees (purge test/dummy data)
    */
-  async seedIfEmpty(): Promise<void> {
-    const count = await this.attendeeModel.countDocuments();
-    if (count === 0) {
-      await this.attendeeModel.insertMany(DEFAULT_ATTENDEES);
-    }
+  async clearAll(): Promise<{ count: number; message: string }> {
+    const res = await this.attendeeModel.deleteMany({});
+    return { count: res.deletedCount || 0, message: 'All attendee records cleared successfully' };
   }
 
   /**
-   * Force seed or reset attendees
+   * Delete single attendee by id
    */
-  async seedAttendees(): Promise<{ count: number; attendees: AttendeeDocument[] }> {
-    await this.attendeeModel.deleteMany({});
-    const inserted = await this.attendeeModel.insertMany(DEFAULT_ATTENDEES);
-    return { count: inserted.length, attendees: inserted as any };
+  async deleteAttendee(id: string): Promise<{ success: boolean }> {
+    await this.attendeeModel.findByIdAndDelete(id);
+    return { success: true };
   }
 
   /**
@@ -364,9 +131,6 @@ export class AttendanceService {
     department?: string;
     status?: string;
   }): Promise<{ attendees: any[]; stats: any }> {
-    // Seed default records if empty
-    await this.seedIfEmpty();
-
     const filter: any = {};
 
     if (query?.department && query.department !== 'ALL') {

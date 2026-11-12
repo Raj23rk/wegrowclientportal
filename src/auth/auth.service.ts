@@ -6,22 +6,6 @@ import { User, UserDocument } from '../schemas/user.schema';
 
 export const DEMO_USERS = [
   {
-    email: 'arjun@meridianfoods.in',
-    clientId: 'C001',
-    password: 'demo123',
-    role: 'client',
-    name: 'Arjun Mehta',
-    title: 'Managing Director'
-  },
-  {
-    email: 'lakshmi@kaveritextiles.in',
-    clientId: 'C002',
-    password: 'demo123',
-    role: 'client',
-    name: 'Lakshmi Sundar',
-    title: 'Chief Executive'
-  },
-  {
     email: 'admin@wegrow.in',
     clientId: null,
     password: 'admin123',

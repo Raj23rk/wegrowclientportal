@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -122,11 +123,19 @@ export class AttendanceController {
   }
 
   /**
-   * Reset / Seed initial 15 attendees
+   * Clear all attendees (purges dummy/static test data)
    */
-  @Post('seed')
-  async seedAttendees() {
-    return this.attendanceService.seedAttendees();
+  @Delete('clear')
+  async clearAll() {
+    return this.attendanceService.clearAll();
+  }
+
+  /**
+   * Delete single attendee by id
+   */
+  @Delete(':id')
+  async deleteAttendee(@Param('id') id: string) {
+    return this.attendanceService.deleteAttendee(id);
   }
 }
 
