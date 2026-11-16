@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CacheService } from '../common/cache.service';
 import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
+import { EventFeedback, EventFeedbackDocument } from '../schemas/event-feedback.schema';
 import { RegisterAttendeeDto, GateCheckInDto, UpdateFeedbackDto } from './dto/attendance.dto';
 
 @Injectable()
@@ -10,6 +11,8 @@ export class AttendanceService {
   constructor(
     @InjectModel(Attendee.name)
     private readonly attendeeModel: Model<AttendeeDocument>,
+    @InjectModel(EventFeedback.name)
+    private readonly feedbackModel: Model<EventFeedbackDocument>,
     private readonly cacheService: CacheService
   ) {}
 
@@ -71,32 +74,34 @@ export class AttendanceService {
    */
   async register(dto: RegisterAttendeeDto): Promise<AttendeeDocument> {
     const cleanPhone = dto.phone.trim();
-    const cleanEmail = dto.email ? dto.email.trim().toLowerCase() : '';
-
-    if (!cleanEmail) {
-      throw new BadRequestException('Email address is mandatory');
-    }
+    const cleanEmail = dto.email && dto.email.trim() ? dto.email.trim().toLowerCase() : '';
 
     // Check if duplicate phone or email exists
     if (cleanPhone || cleanEmail) {
-      const existing = await this.attendeeModel.findOne({
-        $or: [
-          ...(cleanPhone ? [{ phone: cleanPhone }] : []),
-          ...(cleanEmail ? [{ email: cleanEmail }] : [])
-        ]
-      });
-      if (existing) {
-        return existing;
+      const orConditions: any[] = [];
+      if (cleanPhone) orConditions.push({ phone: cleanPhone });
+      if (cleanEmail) orConditions.push({ email: cleanEmail });
+
+      if (orConditions.length > 0) {
+        const existing = await this.attendeeModel.findOne({ $or: orConditions });
+        if (existing) {
+          return existing;
+        }
       }
     }
 
     const passCode = await this.generateNextPassCode();
 
+    // Auto generate email if not provided
+    const email =
+      cleanEmail ||
+      `${dto.fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')}@taggroup.in`;
+
     const newAttendee = new this.attendeeModel({
       passCode,
       fullName: dto.fullName.trim(),
       phone: cleanPhone,
-      email: cleanEmail,
+      email,
       companyName: dto.companyName?.trim() || 'TAG Group',
       designation: dto.designation.trim(),
       department: dto.department?.trim() || 'Operations',
@@ -386,6 +391,71 @@ export class AttendanceService {
     return {
       success: true,
       attendee: { ...attendee.toObject(), id: attendee._id.toString() }
+    };
+  }
+
+  /**
+   * Submit detailed LEAD 360 Participant Feedback Form
+   */
+  async submitEventFeedback(payload: any): Promise<{ success: boolean; message: string; feedback: any }> {
+    const newFeedback = new this.feedbackModel({
+      name: payload.name?.trim() || '',
+      designation: payload.designation?.trim() || '',
+      department: payload.department?.trim() || '',
+      date: payload.date || '2026-11-19',
+      trainer: payload.trainer?.trim() || 'WeGrow B School Lead Trainer',
+      programmeContent: payload.programmeContent || {},
+      trainerFacilitator: payload.trainerFacilitator || {},
+      activities: payload.activities || {},
+      learningApplication: payload.learningApplication || {},
+      arrangementsLogistics: payload.arrangementsLogistics || {},
+      overallRating: payload.overallRating || 'Excellent',
+      programmeDuration: payload.programmeDuration || 'Right',
+      recommend: payload.recommend || 'Yes',
+      mostUseful: payload.mostUseful?.trim() || '',
+      leastUseful: payload.leastUseful?.trim() || '',
+      howCanImprove: payload.howCanImprove?.trim() || '',
+      futureTopics: payload.futureTopics?.trim() || '',
+      otherComments: payload.otherComments?.trim() || '',
+      submittedAt: new Date().toISOString()
+    });
+
+    const saved = await newFeedback.save();
+
+    // If participant name provided, try matching attendee and mark feedbackFilled = true
+    if (payload.name && payload.name.trim()) {
+      try {
+        const cleanName = payload.name.trim();
+        const regex = new RegExp(`^${cleanName}$`, 'i');
+        const attendee = await this.attendeeModel.findOne({ fullName: regex });
+        if (attendee) {
+          attendee.feedbackFilled = true;
+          attendee.feedbackRating = payload.overallRating === 'Excellent' ? 5 : payload.overallRating === 'Very good' ? 4 : payload.overallRating === 'Good' ? 3 : 2;
+          attendee.feedbackNotes = payload.mostUseful || payload.otherComments || '';
+          await attendee.save();
+          this.cacheService.deletePattern('attendance:');
+        }
+      } catch (err) {
+        console.warn('Auto-matching attendee to feedback skipped:', err);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Participant feedback submitted successfully',
+      feedback: saved
+    };
+  }
+
+  /**
+   * Get all submitted participant feedbacks
+   */
+  async getEventFeedbacks(): Promise<{ success: boolean; count: number; feedbacks: any[] }> {
+    const list = await this.feedbackModel.find({}).sort({ createdAt: -1 }).lean();
+    return {
+      success: true,
+      count: list.length,
+      feedbacks: list.map((f: any) => ({ ...f, id: f._id.toString() }))
     };
   }
 

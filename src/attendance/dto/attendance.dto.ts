@@ -9,9 +9,9 @@ export class RegisterAttendeeDto {
   @IsNotEmpty()
   phone: string;
 
-  @IsEmail({}, { message: 'Please provide a valid email address' })
-  @IsNotEmpty({ message: 'Email address is required' })
-  email: string;
+  @IsString()
+  @IsOptional()
+  email?: string;
 
   @IsString()
   @IsOptional()

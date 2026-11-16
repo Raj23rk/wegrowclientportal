@@ -107,6 +107,22 @@ export class AttendanceController {
   }
 
   /**
+   * Submit participant feedback form
+   */
+  @Post('feedback-form')
+  async submitFeedbackForm(@Body() body: any) {
+    return this.attendanceService.submitEventFeedback(body);
+  }
+
+  /**
+   * Get all submitted participant feedbacks
+   */
+  @Get('feedback-form')
+  async getFeedbackForms() {
+    return this.attendanceService.getEventFeedbacks();
+  }
+
+  /**
    * Toggle feedback status
    */
   @Patch(':id/feedback')

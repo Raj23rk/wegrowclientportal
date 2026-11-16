@@ -3,11 +3,13 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
 import { Attendee, AttendeeSchema } from '../schemas/attendee.schema';
+import { EventFeedback, EventFeedbackSchema } from '../schemas/event-feedback.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Attendee.name, schema: AttendeeSchema }
+      { name: Attendee.name, schema: AttendeeSchema },
+      { name: EventFeedback.name, schema: EventFeedbackSchema }
     ])
   ],
   controllers: [AttendanceController],
