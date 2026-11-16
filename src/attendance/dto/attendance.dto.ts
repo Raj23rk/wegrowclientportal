@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, IsEmail } from 'class-validator';
 
 export class RegisterAttendeeDto {
   @IsString()
@@ -8,6 +8,10 @@ export class RegisterAttendeeDto {
   @IsString()
   @IsNotEmpty()
   phone: string;
+
+  @IsEmail({}, { message: 'Please provide a valid email address' })
+  @IsNotEmpty({ message: 'Email address is required' })
+  email: string;
 
   @IsString()
   @IsOptional()
@@ -20,10 +24,6 @@ export class RegisterAttendeeDto {
   @IsString()
   @IsOptional()
   department?: string;
-
-  @IsString()
-  @IsOptional()
-  email?: string;
 
   @IsString()
   @IsOptional()

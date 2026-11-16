@@ -70,10 +70,21 @@ export class AttendanceService {
    * Register a new employee/nominee from frontend form
    */
   async register(dto: RegisterAttendeeDto): Promise<AttendeeDocument> {
-    // Check if duplicate phone or email exists
     const cleanPhone = dto.phone.trim();
-    if (cleanPhone) {
-      const existing = await this.attendeeModel.findOne({ phone: cleanPhone });
+    const cleanEmail = dto.email ? dto.email.trim().toLowerCase() : '';
+
+    if (!cleanEmail) {
+      throw new BadRequestException('Email address is mandatory');
+    }
+
+    // Check if duplicate phone or email exists
+    if (cleanPhone || cleanEmail) {
+      const existing = await this.attendeeModel.findOne({
+        $or: [
+          ...(cleanPhone ? [{ phone: cleanPhone }] : []),
+          ...(cleanEmail ? [{ email: cleanEmail }] : [])
+        ]
+      });
       if (existing) {
         return existing;
       }
@@ -81,17 +92,11 @@ export class AttendanceService {
 
     const passCode = await this.generateNextPassCode();
 
-    // Auto generate email if not provided
-    const email =
-      dto.email && dto.email.trim()
-        ? dto.email.trim().toLowerCase()
-        : `${dto.fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')}@taggroup.in`;
-
     const newAttendee = new this.attendeeModel({
       passCode,
       fullName: dto.fullName.trim(),
       phone: cleanPhone,
-      email,
+      email: cleanEmail,
       companyName: dto.companyName?.trim() || 'TAG Group',
       designation: dto.designation.trim(),
       department: dto.department?.trim() || 'Operations',

@@ -14,7 +14,7 @@ export class Attendee {
   @Prop({ required: true, trim: true })
   phone: string;
 
-  @Prop({ default: '', trim: true })
+  @Prop({ required: true, trim: true, lowercase: true })
   email: string;
 
   @Prop({ default: 'TAG Group', trim: true })
