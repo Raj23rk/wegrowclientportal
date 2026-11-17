@@ -71,10 +71,10 @@ export class AttendanceService {
    * Register a new employee/nominee from frontend form
    */
   async register(dto: RegisterAttendeeDto): Promise<AttendeeDocument> {
-    // Registration deadline: 17 November 2026, 07:00 PM IST (19:00:00+05:30)
-    const DEADLINE = new Date('2026-11-17T19:00:00+05:30').getTime();
+    // Registration deadline: 17 November 2026, 08:00 PM IST (20:00:00+05:30)
+    const DEADLINE = new Date('2026-11-17T20:00:00+05:30').getTime();
     if (Date.now() >= DEADLINE) {
-      throw new BadRequestException('Registrations for Leadership in Action closed on 17 November 2026 at 07:00 PM');
+      throw new BadRequestException('Registrations for Leadership in Action closed on 17 November 2026 at 08:00 PM');
     }
 
     const cleanPhone = dto.phone.trim();
