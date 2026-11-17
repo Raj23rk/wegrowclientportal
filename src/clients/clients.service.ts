@@ -112,17 +112,24 @@ export class ClientsService {
           this.feedbackModel.find({ clientId }).sort({ date: -1 }).lean()
         ]);
 
+      const normalizeItem = (item: any, idField: string, urlField?: string) => ({
+        ...item,
+        id: item[idField] || item._id?.toString(),
+        ...(urlField && item[urlField] ? { url: item[urlField] } : {})
+      });
+
       return {
         ...client,
-        actions,
-        sessions,
-        reports,
-        updates,
-        events,
-        photos,
-        documents,
-        notifications,
-        feedback
+        id: client.clientId,
+        actions: actions.map((a: any) => normalizeItem(a, 'actionId')),
+        sessions: sessions.map((s: any) => normalizeItem(s, 'sessionId')),
+        reports: reports.map((r: any) => ({ ...normalizeItem(r, 'reportId'), fileUrl: r.fileUrl })),
+        updates: updates.map((u: any) => normalizeItem(u, 'updateId')),
+        events: events.map((e: any) => normalizeItem(e, 'eventId')),
+        photos: photos.map((p: any) => normalizeItem(p, 'photoId', 'imageUrl')),
+        documents: documents.map((d: any) => normalizeItem(d, 'docId', 'storagePath')),
+        notifications: notifications.map((n: any) => normalizeItem(n, 'notifId')),
+        feedback: feedback.map((f: any) => normalizeItem(f, 'feedbackId'))
       };
     });
   }

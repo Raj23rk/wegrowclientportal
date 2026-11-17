@@ -336,4 +336,26 @@ export class AdminController {
   ) {
     return this.adminService.sendNotification(clientId, dto);
   }
+
+  // Workshop & Session Photos
+  @Post('clients/:clientId/photos')
+  async addPhoto(
+    @Param('clientId') clientId: string,
+    @Body() dto: any
+  ) {
+    return this.adminService.addPhoto(clientId, dto);
+  }
+
+  @Get('clients/:clientId/photos')
+  async getPhotos(@Param('clientId') clientId: string) {
+    return this.adminService.getPhotos(clientId);
+  }
+
+  @Delete('clients/:clientId/photos/:photoId')
+  async deletePhoto(
+    @Param('clientId') clientId: string,
+    @Param('photoId') photoId: string
+  ) {
+    return this.adminService.deletePhoto(clientId, photoId);
+  }
 }

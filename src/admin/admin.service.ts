@@ -936,6 +936,48 @@ export class AdminService {
     return { success: true, message: `Update ${updateId} deleted` };
   }
 
+  // Workshop & Session Photos
+  async addPhoto(clientId: string, dto: any) {
+    const photoId = dto.photoId || 'PH-' + Date.now().toString().slice(-6);
+    const photo = await this.photoModel.create({
+      clientId,
+      photoId,
+      cat: dto.cat || 'Workshops',
+      title: dto.title || dto.name || 'Workshop Photo',
+      date: dto.date || this.getTodayString(),
+      desc: dto.desc || 'Leadership in Action session moments',
+      hue: dto.hue || 210,
+      seed: dto.seed || 1,
+      imageUrl: dto.imageUrl || dto.url || ''
+    });
+
+    await this.notificationModel.create({
+      clientId,
+      notifId: 'N' + Date.now().toString().slice(-6),
+      cat: 'Events',
+      text: `New session photo added: ${photo.title}`,
+      date: this.getTodayString(),
+      read: false,
+      link: '#/photos'
+    });
+
+    this.invalidateCache(clientId);
+    return photo;
+  }
+
+  async getPhotos(clientId: string) {
+    return this.photoModel.find({ clientId }).sort({ date: -1 }).lean();
+  }
+
+  async deletePhoto(clientId: string, photoId: string) {
+    const res = await this.photoModel.findOneAndDelete({ clientId, photoId });
+    if (!res) {
+      throw new NotFoundException(`Photo ${photoId} not found`);
+    }
+    this.invalidateCache(clientId);
+    return { success: true, message: `Photo ${photoId} deleted` };
+  }
+
   // Direct Notifications Dispatch
   async sendNotification(clientId: string, dto: CreateNotificationDto) {
     const notifId = 'N' + Date.now().toString().slice(-6);
