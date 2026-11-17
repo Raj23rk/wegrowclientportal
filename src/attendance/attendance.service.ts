@@ -48,10 +48,11 @@ export class AttendanceService {
   }
 
   /**
-   * Helper to format current time like "09:30 AM"
+   * Helper to format current time in IST (Indian Standard Time, Asia/Kolkata) like "09:30 AM"
    */
-  private getFormattedTime(): string {
-    return new Date().toLocaleTimeString('en-US', {
+  private getFormattedTime(date: Date = new Date()): string {
+    return date.toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
@@ -59,14 +60,11 @@ export class AttendanceService {
   }
 
   /**
-   * Helper to format registration date like "2026-11-11 04:30 PM"
+   * Helper to format registration date in IST (Asia/Kolkata) like "2026-11-17 09:30 AM"
    */
-  private getFormattedRegDate(): string {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${this.getFormattedTime()}`;
+  private getFormattedRegDate(date: Date = new Date()): string {
+    const yyyyMmDd = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    return `${yyyyMmDd} ${this.getFormattedTime(date)}`;
   }
 
   /**
